@@ -1,4 +1,4 @@
-import express from 'express';
+import express from "express";
 import bodyParser from 'body-parser';
 import {filterImageFromURL, deleteLocalFiles} from './util/util';
 
@@ -6,12 +6,35 @@ import {filterImageFromURL, deleteLocalFiles} from './util/util';
 
   // Init the Express application
   const app = express();
-
-  // Set the network port
   const port = process.env.PORT || 8082;
   
   // Use the body parser middleware for post requests
   app.use(bodyParser.json());
+
+  // Endpoint to filter an image
+  app.get('/filteredimage', async (request, result) => {
+    const urlParam = request.query.image_url;
+
+    // Check if the parameter has been provided
+    if (!urlParam) {
+      return result.status(400).send({
+        message: 'Missing \'image_url\' parameter from query!'
+      });
+    }
+
+    // Process the image
+    try {
+      const image = await filterImageFromURL(urlParam);
+
+      result.sendFile(image, () =>
+        // Remove local files using provided function
+        deleteLocalFiles([image])
+      );
+    } catch (e) {
+      // Failed to filter the image, send suggested http error code
+      result.sendStatus(422).send('Failed to filter the provided image: ' + e);
+    }
+  })
 
   // @TODO1 IMPLEMENT A RESTFUL ENDPOINT
   // GET /filteredimage?image_url={{URL}}
@@ -36,7 +59,6 @@ import {filterImageFromURL, deleteLocalFiles} from './util/util';
   app.get( "/", async ( req, res ) => {
     res.send("try GET /filteredimage?image_url={{}}")
   } );
-  
 
   // Start the Server
   app.listen( port, () => {
